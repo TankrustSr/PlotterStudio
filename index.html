@@ -135,6 +135,33 @@
                     </button>
                 </div>
             </div>
+			
+			<!-- CUSTOM SAVED PRESETS MANAGER -->
+            <div class="p-3 border-b border-zinc-800 bg-zinc-950/60 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                        <i class="fa-solid fa-floppy-disk mr-1 text-emerald-400"></i>Custom Saved Presets
+                    </span>
+                    <div class="flex items-center space-x-1.5">
+                        <button id="exportCustomPresetsBtn" class="text-zinc-400 hover:text-emerald-300 text-xs px-1" title="Export Presets to JSON File">
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                        </button>
+                        <label class="text-zinc-400 hover:text-emerald-300 text-xs cursor-pointer px-1" title="Import Presets from JSON File">
+                            <i class="fa-solid fa-file-arrow-up"></i>
+                            <input id="importCustomPresetsInput" type="file" accept=".json" class="hidden">
+                        </label>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <input id="customPresetNameInput" type="text" placeholder="Preset name..." class="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500">
+                    <button id="saveCustomPresetBtn" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center space-x-1">
+                        <i class="fa-solid fa-check text-[10px]"></i><span>Save</span>
+                    </button>
+                </div>
+                <div id="customPresetListContainer" class="space-y-1 max-h-28 overflow-y-auto">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
 
             <div class="px-3 py-2.5 border-b border-zinc-800 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
@@ -258,9 +285,28 @@
                                 <option value="spirograph">7. Guilloché / Harmonograph Spirograph</option>
                                 <option value="moire">8. Concentric Wave Interference Moiré</option>
                                 <option value="truchet">9. Recursive Islamic / Truchet Geometric Weave</option>
+								<option value="image_trace">10. Grayscale Image / Drawing Tracer (6 Modes)</option>
                             </optgroup>
                         </select>
                     </div>
+					<!-- Grayscale Reference Image Upload Panel (Shown when Algorithm 10 is active or for image modulation) -->
+					<div id="imageUploadControlBox" class="p-3 rounded-lg bg-zinc-950/90 border border-emerald-700/50 space-y-2.5">
+						<div class="flex items-center justify-between">
+							<span class="text-xs font-semibold text-emerald-300">
+								<i class="fa-solid fa-image mr-1.5"></i>Reference Grayscale Image
+							</span>
+							<span id="imageStatusBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">Built-In Demo Portrait</span>
+						</div>
+						<div class="flex items-center space-x-2">
+							<label class="flex-1 cursor-pointer px-2.5 py-1.5 rounded bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 text-xs font-medium text-center transition">
+								<i class="fa-solid fa-upload mr-1"></i>Load Image (PNG/JPG/SVG)
+								<input id="grayscaleImageInput" type="file" accept="image/*" class="hidden">
+							</label>
+							<button id="showBgImageToggleBtn" class="px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs transition" title="Toggle reference image ghost overlay on canvas">
+								<i class="fa-solid fa-eye"></i>
+							</button>
+						</div>
+					</div>
 
                     <div id="distributeVascularBox" class="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-800/50 flex items-center justify-between">
                         <div class="pr-2">
@@ -904,6 +950,41 @@
                 { key: 'style', label: 'Style (0=Arcs, 1=Diag, 2=Oct)', min: 0, max: 2, step: 1, default: 0 },
                 { key: 'multiLine', label: 'Concentric Parallel Bands', min: 1, max: 5, step: 1, default: 2 },
                 { key: 'noiseBias', label: 'Directional Flow Bias', min: 0, max: 1, step: 0.05, default: 0.35 }
+            ],
+			image_trace: [
+                {
+                    key: 'traceMode', label: 'Image Approximation Style', type: 'select', default: 'wave_scan',
+                    options: [
+                        { value: 'wave_scan', label: '1. Modulated Sine Scanlines (Engraving)' },
+                        { value: 'straight_scan', label: '2. Variable-Pressure Linear Scanlines' },
+                        { value: 'spiral', label: '3. Continuous Archimedean Spiral' },
+                        { value: 'crosshatch', label: '4. Multi-Angle Cross-Hatching' },
+                        { value: 'flow_trace', label: '5. Gradient Edge-Following Streamlines' },
+                        { value: 'contours', label: '6. Topographic Iso-Brightness Contours' }
+                    ]
+                },
+                {
+                    key: 'fitMode', label: 'Image Aspect Fit', type: 'select', default: 'contain',
+                    options: [
+                        { value: 'contain', label: 'Contain (Preserve Aspect Ratio)' },
+                        { value: 'cover', label: 'Cover (Fill Printable Area)' }
+                    ]
+                },
+                { key: 'lineCount', label: 'Line Density / Count', min: 20, max: 220, step: 2, default: 88 },
+                { key: 'sampleStep', label: 'Sample Resolution (mm)', min: 0.4, max: 3.0, step: 0.1, default: 0.8 },
+                { key: 'scanAngle', label: 'Scanline Rotation Angle (°)', min: -90, max: 90, step: 1, default: 0 },
+                { key: 'waveAmp', label: 'Wave / Modulation Amplitude (mm)', min: 0.0, max: 8.0, step: 0.2, default: 2.2 },
+                { key: 'waveFreq', label: 'Wave Carrier Frequency', min: 0.2, max: 6.0, step: 0.1, default: 1.8 },
+                { key: 'minDarkness', label: 'White Cutoff Threshold', min: 0.01, max: 0.85, step: 0.02, default: 0.12 },
+                { key: 'contrast', label: 'Image Contrast Boost', min: 0.4, max: 3.0, step: 0.05, default: 1.25 },
+                { key: 'brightness', label: 'Brightness Offset', min: -0.5, max: 0.5, step: 0.02, default: 0.0 },
+                {
+                    key: 'invertImg', label: 'Tone Polarity', type: 'select', default: 0,
+                    options: [
+                        { value: 0, label: 'Plot Dark Ink on Light Areas (Standard)' },
+                        { value: 1, label: 'Invert (Plot White/Metallic Ink on Dark Paper)' }
+                    ]
+                }
             ]
         };
 
@@ -1067,7 +1148,140 @@
             }
             return paths;
         }
+		/**************************************************************************
+         * GRAYSCALE IMAGE BUFFER & BILINEAR LUMINANCE / GRADIENT SAMPLER
+         **************************************************************************/
+        const grayscaleSampler = {
+            width: 256,
+            height: 256,
+            data: new Float32Array(256 * 256), // Normalized darkness: 0.0 (white) to 1.0 (black)
+            imgElement: null,
+            showOverlay: false,
+            loadedName: 'Built-In Demo Relief',
 
+            initDefaultRelief() {
+                const W = 256, H = 256;
+                this.width = W; this.height = H;
+                this.data = new Float32Array(W * H);
+                for (let y = 0; y < H; y++) {
+                    for (let x = 0; x < W; x++) {
+                        const nx = (x / W) * 2 - 1;
+                        const ny = (y / H) * 2 - 1;
+                        const r = Math.hypot(nx, ny);
+                        let darkness = 0;
+                        if (r < 0.78) {
+                            const nz = Math.sqrt(Math.max(0, 0.78 * 0.78 - nx * nx - ny * ny));
+                            // Directional light from top-left (-0.5, -0.55, 0.65)
+                            const light = Math.max(0, (nx * -0.55 + ny * -0.55 + nz * 0.62) / 0.78);
+                            const rings = 0.5 + 0.5 * Math.sin(r * 28 - Math.atan2(ny, nx) * 2);
+                            darkness = Math.pow(1.0 - light, 1.35) * 0.82 + rings * 0.18;
+                        } else {
+                            // Subtle background radial vignette
+                            darkness = Math.max(0, 0.22 * (1 - r * 0.85));
+                        }
+                        this.data[y * W + x] = Math.max(0, Math.min(1, darkness));
+                    }
+                }
+            },
+
+            loadFromFile(file, callback) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxDim = 480;
+                        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                        const w = Math.max(16, Math.round(img.width * scale));
+                        const h = Math.max(16, Math.round(img.height * scale));
+                        const offCanvas = document.createElement('canvas');
+                        offCanvas.width = w;
+                        offCanvas.height = h;
+                        const ctx = offCanvas.getContext('2d');
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        const imgData = ctx.getImageData(0, 0, w, h).data;
+                        this.width = w;
+                        this.height = h;
+                        this.data = new Float32Array(w * h);
+
+                        for (let i = 0; i < w * h; i++) {
+                            const r = imgData[i * 4];
+                            const g = imgData[i * 4 + 1];
+                            const b = imgData[i * 4 + 2];
+                            const a = imgData[i * 4 + 3] / 255;
+                            // Perceived luminance (ITU-R BT.709)
+                            const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+                            const blendedLum = lum * a + (1 - a);
+                            this.data[i] = 1.0 - blendedLum; // 1.0 = solid black, 0.0 = pure white
+                        }
+                        this.imgElement = img;
+                        this.loadedName = file.name;
+                        if (callback) callback();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            },
+
+            // Sample darkness (0.0 to 1.0) at physical paper coordinate (xMm, yMm)
+            sampleDarkness(xMm, yMm, paperW, paperH, margin, params) {
+                const innerW = Math.max(10, paperW - 2 * margin);
+                const innerH = Math.max(10, paperH - 2 * margin);
+                const imgAspect = this.width / this.height;
+                const boxAspect = innerW / innerH;
+
+                let drawW = innerW, drawH = innerH;
+                if ((params.fitMode || 'contain') === 'contain') {
+                    if (imgAspect > boxAspect) drawH = innerW / imgAspect;
+                    else drawW = innerH * imgAspect;
+                } else {
+                    if (imgAspect > boxAspect) drawW = innerH * imgAspect;
+                    else drawH = innerW / imgAspect;
+                }
+
+                const offsetX = margin + (innerW - drawW) * 0.5;
+                const offsetY = margin + (innerH - drawH) * 0.5;
+                const u = (xMm - offsetX) / drawW;
+                const v = (yMm - offsetY) / drawH;
+
+                if (u < 0 || u > 1 || v < 0 || v > 1) return 0.0;
+
+                // Bilinear interpolation
+                const gx = u * (this.width - 1);
+                const gy = v * (this.height - 1);
+                const x0 = Math.floor(gx), y0 = Math.floor(gy);
+                const x1 = Math.min(this.width - 1, x0 + 1);
+                const y1 = Math.min(this.height - 1, y0 + 1);
+                const fx = gx - x0, fy = gy - y0;
+
+                const d00 = this.data[y0 * this.width + x0];
+                const d10 = this.data[y0 * this.width + x1];
+                const d01 = this.data[y1 * this.width + x0];
+                const d11 = this.data[y1 * this.width + x1];
+
+                let val = (d00 * (1 - fx) + d10 * fx) * (1 - fy) + (d01 * (1 - fx) + d11 * fx) * fy;
+                if (Number(params.invertImg) === 1) val = 1.0 - val;
+
+                // Apply brightness & contrast
+                val = val + (params.brightness || 0);
+                val = (val - 0.5) * (params.contrast || 1.25) + 0.5;
+                return Math.max(0.0, Math.min(1.0, val));
+            },
+
+            // Compute local Sobel gradient vector (gx, gy) & tangent for edge-following streamlines
+            sampleGradient(xMm, yMm, paperW, paperH, margin, params) {
+                const eps = 0.75;
+                const dx = this.sampleDarkness(xMm + eps, yMm, paperW, paperH, margin, params) -
+                           this.sampleDarkness(xMm - eps, yMm, paperW, paperH, margin, params);
+                const dy = this.sampleDarkness(xMm, yMm + eps, paperW, paperH, margin, params) -
+                           this.sampleDarkness(xMm, yMm - eps, paperW, paperH, margin, params);
+                return { gx: dx / (2 * eps), gy: dy / (2 * eps), mag: Math.hypot(dx, dy) };
+            }
+        };
+        grayscaleSampler.initDefaultRelief();
+		
         function generateLayerGeometry(layer) {
             const W = state.paperWidth, H = state.paperHeight, M = state.paperMargin;
             const innerW = Math.max(10, W - 2 * M), innerH = Math.max(10, H - 2 * M);
@@ -1528,12 +1742,256 @@
                 }
                 rawPolylines = stitchTouchingPaths(rawPolylines, 0.35);
             }
+			// --- ALGORITHM 10: GRAYSCALE IMAGE / DRAWING TRACER (6 MODES) ---
+            else if (layer.algo === 'image_trace') {
+                const traceMode = p.traceMode || 'wave_scan';
+                const lineCount = Math.round(p.lineCount || 88);
+                const sampleStep = Math.max(0.35, p.sampleStep || 0.8);
+                const scanAngleRad = ((p.scanAngle || 0) * Math.PI) / 180;
+                const waveAmp = p.waveAmp !== undefined ? p.waveAmp : 2.2;
+                const waveFreq = p.waveFreq || 1.8;
+                const minDark = p.minDarkness !== undefined ? p.minDarkness : 0.12;
+
+                const cosA = Math.cos(scanAngleRad);
+                const sinA = Math.sin(scanAngleRad);
+                const diag = Math.hypot(innerW, innerH) * 0.52;
+
+                // Helper to classify darkness into 3 tonal hierarchy bands (0=Shadows, 1=Midtones, 2=Highlights)
+                const getToneBand = (dark) => (dark > 0.66 ? 0 : (dark > 0.36 ? 1 : 2));
+
+             // MODE 1 & 2: MODULATED SINE SCANLINES OR LINEAR VARIABLE-PRESSURE SCANLINES
+                if (traceMode === 'wave_scan' || traceMode === 'straight_scan') {
+                    for (let i = 0; i < lineCount; i++) {
+                        const vOff = ((i / Math.max(1, lineCount - 1)) * 2 - 1) * diag;
+                        
+                        // First pass: collect raw valid coordinate points for this scanline
+                        const linePts = [];
+                        let phase = 0;
+                        for (let uOff = -diag; uOff <= diag; uOff += sampleStep) {
+                            const baseX = cx + uOff * cosA - vOff * sinA;
+                            const baseY = cy + uOff * sinA + vOff * cosA;
+                            if (baseX < M || baseX > W - M || baseY < M || baseY > H - M) continue;
+
+                            const dark = grayscaleSampler.sampleDarkness(baseX, baseY, W, H, M, p);
+                            if (dark >= minDark) {
+                                const normDark = (dark - minDark) / Math.max(0.01, 1.0 - minDark);
+                                phase += sampleStep * waveFreq * (0.65 + 1.15 * normDark);
+                                
+                                // Apply a smooth cosine taper envelope at the start and end of the line segment
+                                linePts.push({ baseX, baseY, normDark, dark });
+                            }
+                        }
+
+                        if (linePts.length > 2) {
+                            let currentSub = [];
+                            const totalL = linePts.length;
+                            for (let k = 0; k < totalL; k++) {
+                                const pt = linePts[k];
+                                const tPos = k / Math.max(1, totalL - 1);
+                                // Envelope goes from 0 up to 1 at ends to eliminate sinusoidal hook artifacts
+                                const endEnvelope = Math.sin(tPos * Math.PI); 
+                                
+                                const disp = (traceMode === 'wave_scan')
+                                    ? Math.sin(k * 0.45 * waveFreq) * waveAmp * Math.pow(pt.normDark, 0.85) * endEnvelope
+                                    : 0;
+
+                                const px = pt.baseX - sinA * disp;
+                                const py = pt.baseY + cosA * disp;
+                                currentSub.push({
+                                    x: px,
+                                    y: py,
+                                    intrinsicPressure: Math.max(0.06, Math.min(1.0, pt.normDark)),
+                                    band: getToneBand(pt.dark)
+                                });
+                            }
+                            if (currentSub.length > 1) rawPolylines.push(currentSub);
+                        }
+                    }
+                }
+
+                // MODE 3: CONTINUOUS ARCHIMEDEAN SPIRAL TRACE
+                else if (traceMode === 'spiral') {
+                    const maxR = Math.min(innerW, innerH) * 0.48;
+                    const radialPitch = maxR / Math.max(10, lineCount * 0.65);
+                    const totalRevs = maxR / radialPitch;
+                    const maxTheta = totalRevs * Math.PI * 2;
+                    let theta = 0.5;
+                    let currentSub = [];
+                    let wavePhase = 0;
+
+                    while (theta < maxTheta) {
+                        const r = (theta / (Math.PI * 2)) * radialPitch;
+                        const dTheta = Math.min(0.15, sampleStep / Math.max(1.5, r));
+                        theta += dTheta;
+
+                        const bx = cx + Math.cos(theta) * r;
+                        const by = cy + Math.sin(theta) * r;
+                        const dark = grayscaleSampler.sampleDarkness(bx, by, W, H, M, p);
+
+                        if (dark >= minDark) {
+                            const normDark = (dark - minDark) / Math.max(0.01, 1.0 - minDark);
+                            wavePhase += sampleStep * waveFreq * (0.7 + normDark);
+                            const rMod = r + Math.sin(wavePhase) * waveAmp * 0.55 * normDark;
+                            currentSub.push({
+                                x: cx + Math.cos(theta) * rMod,
+                                y: cy + Math.sin(theta) * rMod,
+                                intrinsicPressure: Math.max(0.06, Math.min(1.0, normDark)),
+                                band: getToneBand(dark)
+                            });
+                        } else {
+                            if (currentSub.length > 1) rawPolylines.push(currentSub);
+                            currentSub = [];
+                        }
+                    }
+                    if (currentSub.length > 1) rawPolylines.push(currentSub);
+                }
+
+                // MODE 4: MULTI-ANGLE TONAL CROSS-HATCHING (3 tonal angle passes)
+                else if (traceMode === 'crosshatch') {
+                    const hatchPasses = [
+                        { angleOffset: 0,   threshold: minDark,                 band: 2 },
+                        { angleOffset: 45,  threshold: Math.max(0.35, minDark), band: 1 },
+                        { angleOffset: -45, threshold: Math.max(0.62, minDark), band: 0 }
+                    ];
+
+                    hatchPasses.forEach((hp) => {
+                        const ang = scanAngleRad + (hp.angleOffset * Math.PI) / 180;
+                        const cA = Math.cos(ang), sA = Math.sin(ang);
+                        for (let i = 0; i < lineCount; i++) {
+                            const vOff = ((i / Math.max(1, lineCount - 1)) * 2 - 1) * diag;
+                            let currentSub = [];
+                            for (let uOff = -diag; uOff <= diag; uOff += sampleStep * 1.25) {
+                                const bx = cx + uOff * cA - vOff * sA;
+                                const by = cy + uOff * sA + vOff * cA;
+                                if (bx < M || bx > W - M || by < M || by > H - M) {
+                                    if (currentSub.length > 1) rawPolylines.push(currentSub);
+                                    currentSub = [];
+                                    continue;
+                                }
+                                const dark = grayscaleSampler.sampleDarkness(bx, by, W, H, M, p);
+                                if (dark >= hp.threshold) {
+                                    currentSub.push({
+                                        x: bx,
+                                        y: by,
+                                        intrinsicPressure: Math.max(0.1, Math.min(1.0, dark)),
+                                        band: hp.band
+                                    });
+                                } else {
+                                    if (currentSub.length > 1) rawPolylines.push(currentSub);
+                                    currentSub = [];
+                                }
+                            }
+                            if (currentSub.length > 1) rawPolylines.push(currentSub);
+                        }
+                    });
+                }
+
+                // MODE 5: GRADIENT EDGE-FOLLOWING STREAMLINES
+                else if (traceMode === 'flow_trace') {
+                    const gridN = Math.round(Math.sqrt(lineCount * 14));
+                    const cellW = innerW / gridN;
+                    const cellH = innerH / gridN;
+
+                    for (let gy = 0; gy < gridN; gy++) {
+                        for (let gx = 0; gx < gridN; gx++) {
+                            let x = M + (gx + 0.5) * cellW + rng.range(-cellW * 0.3, cellW * 0.3);
+                            let y = M + (gy + 0.5) * cellH + rng.range(-cellH * 0.3, cellH * 0.3);
+                            const startDark = grayscaleSampler.sampleDarkness(x, y, W, H, M, p);
+                            if (startDark < minDark) continue;
+
+                            const pts = [];
+                            const steps = Math.round(12 + startDark * 26);
+                            for (let s = 0; s < steps; s++) {
+                                if (x < M || x > W - M || y < M || y > H - M) break;
+                                const dark = grayscaleSampler.sampleDarkness(x, y, W, H, M, p);
+                                if (dark < minDark * 0.8) break;
+
+                                const grad = grayscaleSampler.sampleGradient(x, y, W, H, M, p);
+                                // Follow tangent to iso-brightness contour blended with subtle Perlin flow
+                                let tx = -grad.gy;
+                                let ty = grad.gx;
+                                const mag = Math.hypot(tx, ty);
+                                if (mag > 0.002) {
+                                    tx /= mag;
+                                    ty /= mag;
+                                } else {
+                                    const nAng = perlin.noise(x * 0.03, y * 0.03) * Math.PI * 2 + scanAngleRad;
+                                    tx = Math.cos(nAng);
+                                    ty = Math.sin(nAng);
+                                }
+
+                                pts.push({
+                                    x,
+                                    y,
+                                    intrinsicPressure: Math.max(0.08, Math.min(1.0, dark)),
+                                    band: getToneBand(dark)
+                                });
+                                x += tx * sampleStep * 1.3;
+                                y += ty * sampleStep * 1.3;
+                            }
+                            if (pts.length >= 3) rawPolylines.push(pts);
+                        }
+                    }
+                }
+
+                // MODE 6: TOPOGRAPHIC ISO-BRIGHTNESS CONTOURS (Marching Squares)
+                else if (traceMode === 'contours') {
+                    const numLevels = Math.max(3, Math.min(24, Math.round(lineCount / 6)));
+                    const stepMm = Math.max(1.2, sampleStep * 1.8);
+                    const cols = Math.floor(innerW / stepMm);
+                    const rows = Math.floor(innerH / stepMm);
+
+                    const field = new Float32Array((cols + 1) * (rows + 1));
+                    for (let r = 0; r <= rows; r++) {
+                        for (let c = 0; c <= cols; c++) {
+                            field[r * (cols + 1) + c] = grayscaleSampler.sampleDarkness(M + c * stepMm, M + r * stepMm, W, H, M, p);
+                        }
+                    }
+
+                    for (let l = 0; l < numLevels; l++) {
+                        const iso = minDark + ((l + 0.5) / numLevels) * (0.95 - minDark);
+                        const band = getToneBand(iso);
+                        const levelSegs = [];
+
+                        for (let r = 0; r < rows; r++) {
+                            for (let c = 0; c < cols; c++) {
+                                const x0 = M + c * stepMm, y0 = M + r * stepMm;
+                                const v00 = field[r * (cols + 1) + c];
+                                const v10 = field[r * (cols + 1) + (c + 1)];
+                                const v11 = field[(r + 1) * (cols + 1) + (c + 1)];
+                                const v01 = field[(r + 1) * (cols + 1) + c];
+
+                                const edges = [];
+                                if ((v00 < iso) !== (v10 < iso)) {
+                                    const t = (iso - v00) / (v10 - v00 || 1e-5);
+                                    edges.push({ x: x0 + t * stepMm, y: y0, intrinsicPressure: iso, band });
+                                }
+                                if ((v10 < iso) !== (v11 < iso)) {
+                                    const t = (iso - v10) / (v11 - v10 || 1e-5);
+                                    edges.push({ x: x0 + stepMm, y: y0 + t * stepMm, intrinsicPressure: iso, band });
+                                }
+                                if ((v01 < iso) !== (v11 < iso)) {
+                                    const t = (iso - v01) / (v11 - v01 || 1e-5);
+                                    edges.push({ x: x0 + t * stepMm, y: y0 + stepMm, intrinsicPressure: iso, band });
+                                }
+                                if ((v00 < iso) !== (v01 < iso)) {
+                                    const t = (iso - v00) / (v01 - v00 || 1e-5);
+                                    edges.push({ x: x0, y: y0 + t * stepMm, intrinsicPressure: iso, band });
+                                }
+                                if (edges.length >= 2) levelSegs.push([edges[0], edges[1]]);
+                            }
+                        }
+                        const stitchedContours = stitchTouchingPaths(levelSegs, stepMm * 0.45);
+                        rawPolylines.push(...stitchedContours);
+                    }
+                }
+            }
 
             if (layer.hierarchyBand !== undefined && layer.hierarchyBand >= 0) {
                 rawPolylines = rawPolylines.filter(path => (path[0] && path[0].band !== undefined ? path[0].band : 0) === layer.hierarchyBand);
             }
 
-            if (layer.algo !== 'spirograph' && !(layer.algo === 'truchet' && p.style !== 0)) {
+            if (layer.algo !== 'spirograph' && layer.algo !== 'image_trace' && !(layer.algo === 'truchet' && p.style !== 0)) {
                 rawPolylines = smoothAndSubdividePolylines(rawPolylines, 0.38, 2);
             }
 
@@ -2054,6 +2512,12 @@
             ctx.shadowBlur = 24 / state.zoom; ctx.shadowOffsetY = 6 / state.zoom;
             ctx.fillStyle = state.darkPaper ? '#141418' : '#fafaf9';
             ctx.fillRect(0, 0, W, H);
+			if (grayscaleSampler.showOverlay && grayscaleSampler.imgElement) {
+                ctx.save();
+                ctx.globalAlpha = 0.22;
+                ctx.drawImage(grayscaleSampler.imgElement, M, M, W - 2 * M, H - 2 * M);
+                ctx.restore();
+            }
             ctx.restore();
 
             ctx.strokeStyle = state.darkPaper ? '#3f3f46' : '#d4d4d8';
@@ -2566,7 +3030,109 @@ void loop() {
             document.getElementById('layerOffsetYVal').textContent = `${layer.transform.offsetY} mm`;
             document.getElementById('layerClipMarginToggle').checked = layer.transform.clipMargin;
         }
+		
+		/**************************************************************************
+         * CUSTOM PRESET MANAGER (LOCALSTORAGE & JSON EXPORT/IMPORT)
+         **************************************************************************/
+        function getSavedCustomPresets() {
+            try {
+                return JSON.parse(localStorage.getItem('plotterstudio_custom_presets') || '{}');
+            } catch (e) {
+                return {};
+            }
+        }
 
+        function saveCustomPresetsToStorage(presets) {
+            localStorage.setItem('plotterstudio_custom_presets', JSON.stringify(presets));
+        }
+
+        function renderCustomPresetList() {
+            const container = document.getElementById('customPresetListContainer');
+            if (!container) return;
+            const presets = getSavedCustomPresets();
+            const keys = Object.keys(presets);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<div class="text-[10px] text-zinc-500 italic text-center py-1">No custom presets saved yet</div>`;
+                return;
+            }
+
+            container.innerHTML = keys.map(name => `
+                <div class="flex items-center justify-between bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 px-2 py-1 rounded text-xs">
+                    <button data-load-preset="${name}" class="flex-1 text-left truncate text-zinc-300 hover:text-emerald-300 font-medium">${name}</button>
+                    <div class="flex items-center space-x-1 ml-1 shrink-0">
+                        <button data-update-preset="${name}" class="w-5 h-5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-emerald-400 flex items-center justify-center text-[10px]" title="Overwrite with current setup"><i class="fa-solid fa-rotate"></i></button>
+                        <button data-delete-preset="${name}" class="w-5 h-5 rounded hover:bg-rose-950/60 text-zinc-500 hover:text-rose-400 flex items-center justify-center text-[10px]" title="Delete preset"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('button[data-load-preset]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.dataset.loadPreset;
+                    const presets = getSavedCustomPresets();
+                    if (presets[name]) {
+                        loadPresetStateData(presets[name]);
+                        showToast(`Loaded custom preset "${name}"!`);
+                    }
+                });
+            });
+
+            container.querySelectorAll('button[data-update-preset]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.dataset.updatePreset;
+                    const presets = getSavedCustomPresets();
+                    presets[name] = captureCurrentStateData();
+                    saveCustomPresetsToStorage(presets);
+                    renderCustomPresetList();
+                    showToast(`Updated preset "${name}"!`);
+                });
+            });
+
+            container.querySelectorAll('button[data-delete-preset]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.dataset.deletePreset;
+                    const presets = getSavedCustomPresets();
+                    delete presets[name];
+                    saveCustomPresetsToStorage(presets);
+                    renderCustomPresetList();
+                    showToast(`Deleted preset "${name}".`);
+                });
+            });
+        }
+
+        function captureCurrentStateData() {
+            return {
+                paperWidth: state.paperWidth,
+                paperHeight: state.paperHeight,
+                paperMargin: state.paperMargin,
+                servoConfig: JSON.parse(JSON.stringify(state.servoConfig)),
+                layers: JSON.parse(JSON.stringify(state.layers))
+            };
+        }
+
+        function loadPresetStateData(data) {
+            state.paperWidth = data.paperWidth || 210;
+            state.paperHeight = data.paperHeight || 297;
+            state.paperMargin = data.paperMargin !== undefined ? data.paperMargin : 15;
+            document.getElementById('paperWidthInput').value = state.paperWidth;
+            document.getElementById('paperHeightInput').value = state.paperHeight;
+            document.getElementById('paperMarginInput').value = state.paperMargin;
+
+            if (data.servoConfig) Object.assign(state.servoConfig, data.servoConfig);
+            state.layers = data.layers || [];
+            if (state.layers.length === 0) {
+                state.layers.push(createLayer({ algo: 'space_colonization', seed: 1337 }));
+            }
+            state.layers.forEach(l => generateLayerGeometry(l));
+            state.activeLayerId = state.layers[0].id;
+            rebuildAllLightingPaths();
+            renderLayerStack();
+            renderActiveInspector();
+            renderViewport();
+            updateTelemetryBar();
+        }
+		
         function loadArtPreset(presetName) {
             state.layers = []; layerIdCounter = 1;
             if (presetName === 'botanical-leaf') {
@@ -2649,7 +3215,42 @@ void loop() {
             const wInput = document.getElementById('paperWidthInput');
             const hInput = document.getElementById('paperHeightInput');
             const mInput = document.getElementById('paperMarginInput');
+			// Grayscale Image Upload & Ghost Overlay Toggle
+            const imgInput = document.getElementById('grayscaleImageInput');
+            if (imgInput) {
+                imgInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    grayscaleSampler.loadFromFile(file, () => {
+                        document.getElementById('imageStatusBadge').textContent = file.name.slice(0, 18);
+                        const activeLayer = getActiveLayer();
+                        if (activeLayer.algo !== 'image_trace') {
+                            activeLayer.algo = 'image_trace';
+                            activeLayer.params = {};
+                            ALGO_SCHEMAS.image_trace.forEach(s => { activeLayer.params[s.key] = s.default; });
+                            activeLayer.brush.mode = 'intrinsic';
+                        }
+                        state.layers.forEach(l => {
+                            if (l.algo === 'image_trace') generateLayerGeometry(l);
+                        });
+                        renderActiveInspector();
+                        renderLayerStack();
+                        renderViewport();
+                        updateTelemetryBar();
+                        showToast(`Traced "${file.name}" into plotter vectors!`);
+                    });
+                });
+            }
 
+            const bgToggleBtn = document.getElementById('showBgImageToggleBtn');
+            if (bgToggleBtn) {
+                bgToggleBtn.addEventListener('click', () => {
+                    grayscaleSampler.showOverlay = !grayscaleSampler.showOverlay;
+                    bgToggleBtn.classList.toggle('text-emerald-400', grayscaleSampler.showOverlay);
+                    renderViewport();
+                });
+            }
+			
             presetSelect.addEventListener('change', (e) => {
                 if (e.target.value === 'custom') return;
                 const [w, h] = e.target.value.split('x').map(Number);
@@ -2658,6 +3259,67 @@ void loop() {
                 state.layers.forEach(l => generateLayerGeometry(l));
                 rebuildAllLightingPaths(); fitPaperToViewport(); updateTelemetryBar();
             });
+			
+			// Custom Preset Manager Listeners
+            const savePresetBtn = document.getElementById('saveCustomPresetBtn');
+            const presetNameInput = document.getElementById('customPresetNameInput');
+
+            const handleSaveCustomPreset = () => {
+                const name = presetNameInput.value.trim();
+                if (!name) { showToast('Please enter a preset name first.'); return; }
+                const presets = getSavedCustomPresets();
+                presets[name] = captureCurrentStateData();
+                saveCustomPresetsToStorage(presets);
+                presetNameInput.value = '';
+                renderCustomPresetList();
+                showToast(`Saved custom preset "${name}"!`);
+            };
+
+            if (savePresetBtn) savePresetBtn.addEventListener('click', handleSaveCustomPreset);
+            if (presetNameInput) {
+                presetNameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') handleSaveCustomPreset();
+                });
+            }
+
+            const exportBtn = document.getElementById('exportCustomPresetsBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    const presets = getSavedCustomPresets();
+                    const jsonStr = JSON.stringify(presets, null, 2);
+                    const url = URL.createObjectURL(new Blob([jsonStr], { type: 'application/json;charset=utf-8' }));
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `plotter_studio_presets_${Date.now()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast('Exported custom presets to JSON file!');
+                });
+            }
+
+            const importInput = document.getElementById('importCustomPresetsInput');
+            if (importInput) {
+                importInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        try {
+                            const imported = JSON.parse(evt.target.result);
+                            const existing = getSavedCustomPresets();
+                            Object.assign(existing, imported);
+                            saveCustomPresetsToStorage(existing);
+                            renderCustomPresetList();
+                            showToast(`Successfully imported presets from "${file.name}"!`);
+                        } catch (err) {
+                            showToast('Failed to parse preset JSON file.');
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            }
 
             const onCustomDimChange = () => {
                 state.paperWidth = Math.max(20, parseFloat(wInput.value) || 210);
@@ -2953,6 +3615,7 @@ void loop() {
             renderLightBurnReferenceBar();
             loadArtPreset('botanical-leaf');
             initEventListeners();
+			renderCustomPresetList();
             resizeCanvas();
             fitPaperToViewport();
         };

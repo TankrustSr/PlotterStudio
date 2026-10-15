@@ -877,13 +877,20 @@
                 { key: 'centerBias', label: 'Vignette / Horizon Envelope', min: 0.0, max: 1.0, step: 0.05, default: 0.20 }
             ],
             spirograph: [
+                {
+                    key: 'autoClose', label: 'Loop Closure Mode', type: 'select', default: 1,
+                    options: [
+                        { value: 1, label: 'Auto-Close Seamless Loop (Exact GCD)' },
+                        { value: 0, label: 'Manual Revolutions & Spiral Damping' }
+                    ]
+                },
                 { key: 'R', label: 'Outer Ring Radius (mm)', min: 15, max: 140, step: 1, default: 78 },
                 { key: 'r', label: 'Inner Gear Radius (mm)', min: 3, max: 100, step: 1, default: 29 },
                 { key: 'd', label: 'Pen Offset Distance (mm)', min: 5, max: 120, step: 1, default: 52 },
-                { key: 'revolutions', label: 'Gear Revolutions', min: 2, max: 60, step: 1, default: 29 },
+                { key: 'revolutions', label: 'Manual Revolutions (if Manual)', min: 1, max: 60, step: 1, default: 29 },
                 { key: 'modAmp', label: 'Harmonic Ripple (mm)', min: 0, max: 35, step: 1, default: 8 },
-                { key: 'modFreq', label: 'Harmonic Ratio', min: 1, max: 24, step: 0.5, default: 6 },
-                { key: 'decay', label: 'Spiral Damping (%)', min: 0, max: 60, step: 1, default: 12 }
+                { key: 'modFreq', label: 'Harmonic Ratio', min: 1, max: 24, step: 1, default: 6 },
+                { key: 'decay', label: 'Spiral Damping % (Manual Mode)', min: 0, max: 60, step: 1, default: 0 }
             ],
             moire: [
                 { key: 'rings', label: 'Concentric Wave Rings', min: 15, max: 120, step: 5, default: 55 },
@@ -1426,19 +1433,46 @@
                 }
                 rawPolylines.reverse();
             }
+            // --- ALGORITHM 7: SPIROGRAPH ---
             else if (layer.algo === 'spirograph') {
-                const R = p.R, r = p.r, d = p.d, maxTheta = Math.PI * 2 * p.revolutions;
-                const steps = Math.min(14000, Math.max(2400, Math.round(p.revolutions * 320)));
+                const R = Math.round(p.R || 78);
+                const r = Math.round(p.r || 29);
+                const d = p.d;
+                const isAutoClose = Number(p.autoClose !== undefined ? p.autoClose : 1) === 1;
+
+                // Greatest Common Divisor to find exact closing revolutions
+                const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+                const common = gcd(R, r);
+
+                // If modFreq has a .5 fractional part, double revolutions so ripple phase also closes
+                const modFreq = p.modFreq || 6;
+                const rippleMult = (modFreq % 1 !== 0) ? 2 : 1;
+                const exactRevs = Math.min(60, (r / common) * rippleMult);
+
+                const revs = isAutoClose ? exactRevs : p.revolutions;
+                const activeDecay = isAutoClose ? 0 : (p.decay || 0);
+
+                const maxTheta = Math.PI * 2 * revs;
+                const steps = Math.min(16000, Math.max(1200, Math.round(revs * 240)));
                 const pts = [];
+
                 for (let i = 0; i <= steps; i++) {
-                    const t = i / steps, theta = t * maxTheta, decayFactor = 1.0 - (p.decay / 100) * t;
-                    const ripple = p.modAmp * Math.sin(theta * p.modFreq), k = (R - r) / Math.max(0.1, r);
+                    const t = i / steps;
+                    const theta = t * maxTheta;
+                    const decayFactor = 1.0 - (activeDecay / 100) * t;
+                    const ripple = p.modAmp * Math.sin(theta * modFreq);
+                    const k = (R - r) / Math.max(0.1, r);
                     const radOffset = (d + ripple) * decayFactor;
-                    pts.push({
-                        x: cx + ((R - r) * Math.cos(theta) + radOffset * Math.cos(k * theta)) * decayFactor,
-                        y: cy + ((R - r) * Math.sin(theta) - radOffset * Math.sin(k * theta)) * decayFactor,
-                        intrinsicPressure: Math.max(0.08, Math.min(1.0, (0.5 + 0.5 * Math.sin(theta * p.modFreq)) * decayFactor)), band: 0
-                    });
+                    const x = cx + ((R - r) * Math.cos(theta) + radOffset * Math.cos(k * theta)) * decayFactor;
+                    const y = cy + ((R - r) * Math.sin(theta) - radOffset * Math.sin(k * theta)) * decayFactor;
+                    const pVal = Math.max(0.08, Math.min(1.0, (0.5 + 0.5 * Math.sin(theta * modFreq)) * decayFactor));
+                    pts.push({ x, y, intrinsicPressure: pVal, band: 0 });
+                }
+                // Snap final vertex to exact start vertex when Auto-Close is active
+                if (isAutoClose && pts.length > 2) {
+                    pts[pts.length - 1].x = pts[0].x;
+                    pts[pts.length - 1].y = pts[0].y;
+                    pts[pts.length - 1].intrinsicPressure = pts[0].intrinsicPressure;
                 }
                 rawPolylines.push(pts);
             }

@@ -284,6 +284,7 @@
                             <optgroup label="Algorithmic & Geometric Classics">
                                 <option value="flowfield">5. Perlin / Simplex Flow Field</option>
                                 <option value="ridges">6. 3D Topographic Horizons & Ocean Waves (Hidden-Line)</option>
+								<option value="curling_wave">12. 3D Curling Plunging Wave & Foam (Overturning Barrel)</option>
                                 <option value="spirograph">7. Guilloché / Harmonograph Spirograph</option>
                                 <option value="moire">8. Concentric Wave Interference Moiré</option>
                                 <option value="truchet">9. Recursive Islamic / Truchet Geometric Weave</option>
@@ -1016,6 +1017,25 @@
                     ]
                 },
                 { key: 'mistClearings', label: 'Fog / Mist Canopy Clearings', min: 0.0, max: 0.85, step: 0.05, default: 0.30 }
+            ],
+			
+            curling_wave: [
+                {
+                    key: 'renderStyle', label: 'Wave Line Structure', type: 'select', default: 'combined',
+                    options: [
+                        { value: 'combined', label: 'Combined (Up-Face Flow Ribbons + Swell Contours)' },
+                        { value: 'ribbons_only', label: 'Streaky Water Flow Ribbons Only (Photo Style)' },
+                        { value: 'contours_only', label: 'Cross-Section Barrel Profiles Only' }
+                    ]
+                },
+                { key: 'ribbonCount', label: 'Up-Face Water Flow Ribbons', min: 25, max: 240, step: 5, default: 125 },
+                { key: 'swellLines', label: 'Background & Crest Swell Lines', min: 15, max: 140, step: 5, default: 65 },
+                { key: 'waveHeight', label: 'Barrel Height / Scale (mm)', min: 25, max: 140, step: 2, default: 72 },
+                { key: 'curlOverhang', label: 'Lip Pitch / Overturning Curl', min: 0.3, max: 2.2, step: 0.05, default: 1.25 },
+                { key: 'waveSkewAngle', label: 'Diagonal Perspective Angle (°)', min: -40, max: 40, step: 1, default: -16 },
+                { key: 'breakPoint', label: 'Plunging Foam Progression', min: 0.0, max: 1.0, step: 0.05, default: 0.58 },
+                { key: 'foamDensity', label: 'Tumbling Whitewater Foam Density', min: 0, max: 120, step: 5, default: 55 },
+                { key: 'chopTurbulence', label: 'Surface Ripple & Streak Warp', min: 0.0, max: 2.5, step: 0.1, default: 0.85 }
             ]
         };
 
@@ -2017,8 +2037,7 @@
                     }
                 }
             }
-			// --- ALGORITHM 11: AERIAL DRONE FOREST CANOPY & RIVER VALLEY ---
-           // --- ALGORITHM 11: AERIAL DRONE FOREST CANOPY & RIVER VALLEY ---
+	           // --- ALGORITHM 11: AERIAL DRONE FOREST CANOPY & RIVER VALLEY ---
             else if (layer.algo === 'aerial_canopy') {
                 const forestStyle = p.forestStyle || 'mixed_boreal';
                 const targetTrees = Math.round(p.treeCount || 165);
@@ -2263,6 +2282,206 @@
                             }
                         }
                         if (currentSub.length > 2) rawPolylines.push(currentSub);
+                    }
+                }
+            }
+			// --- ALGORITHM 12: 3D CURLING PLUNGING WAVE & FOAM (OVERTURNING BARREL) ---
+            else if (layer.algo === 'curling_wave') {
+                const renderStyle = p.renderStyle || 'combined';
+                const ribbonCount = Math.round(p.ribbonCount || 125);
+                const swellLines = Math.round(p.swellLines || 65);
+                const H_wave = p.waveHeight || 72;
+                const curlOverhang = p.curlOverhang !== undefined ? p.curlOverhang : 1.25;
+                const skewRad = ((p.waveSkewAngle !== undefined ? p.waveSkewAngle : -16) * Math.PI) / 180;
+                const breakProg = p.breakPoint !== undefined ? p.breakPoint : 0.58;
+                const foamDensity = Math.round(p.foamDensity !== undefined ? p.foamDensity : 55);
+                const chop = p.chopTurbulence !== undefined ? p.chopTurbulence : 0.85;
+
+                // 2D Screen-space Z-occlusion grid (1.1 mm cells) so front barrel & foam hide lines behind them
+                const occCell = 1.1;
+                const oCols = Math.ceil(W / occCell) + 4;
+                const oRows = Math.ceil(H / occCell) + 4;
+                const zBuffer = new Float32Array(oCols * oRows).fill(-99999);
+
+                const checkAndWriteOcclusion = (px, py, zDepth, writeRadius = 1, testOnly = false) => {
+                    if (px < M || px > W - M || py < M || py > H - M) return false;
+                    const gx = Math.floor(px / occCell), gy = Math.floor(py / occCell);
+                    if (gx < 1 || gx >= oCols - 1 || gy < 1 || gy >= oRows - 1) return false;
+                    const currentMaxZ = zBuffer[gy * oCols + gx];
+                    // Allow points in the same surface sheet (within 4.5 units of Z) to draw, block deeper layers
+                    if (zDepth < currentMaxZ - 4.5) return false;
+                    if (!testOnly) {
+                        for (let dy = -writeRadius; dy <= writeRadius; dy++) {
+                            for (let dx = -writeRadius; dx <= writeRadius; dx++) {
+                                const idx = (gy + dy) * oCols + (gx + dx);
+                                if (zBuffer[idx] < zDepth) zBuffer[idx] = zDepth;
+                            }
+                        }
+                    }
+                    return true;
+                };
+
+                // Parametric 3D Overturning Wave Surface:
+                // u in [-1, 1] = position along the wave crest (left = open green barrel, right = plunging foam lip)
+                // v in [-1.2, 1.35] = position along water cross-section:
+                //   v < -0.35 : foreground flat trough apron
+                //   -0.35 <= v <= 0.45 : concave rising barrel face & overturning lip
+                //   v > 0.45 : upper crest & receding back-slope swell
+                const cosSk = Math.cos(skewRad), sinSk = Math.sin(skewRad);
+                const spanU = innerW * 0.62;
+
+                const evalWaveSurface = (u, v) => {
+                    // Progressive shoaling: wave pitches further forward as u moves toward the breaking side
+                    const shoal = Math.max(0, Math.min(1.3, (u + 0.65) * 0.85 * (0.5 + 0.8 * breakProg)));
+                    const localCurl = curlOverhang * (0.72 + 0.48 * shoal);
+
+                    // Organic noise warp along the crest
+                    const ridgeWarp = perlin.fbm(u * 1.8 + 4.2, v * 1.4, 3) * 8.5 * chop;
+                    const streakRipple = perlin.noise(u * 9.5 + v * 2.5, v * 4.2) * 2.2 * chop;
+
+                    let localX = u * spanU;
+                    let localY = 0;
+                    let depthZ = 0; // Higher Z = closer to viewer (foreground)
+                    let pressure = 0.5;
+                    let band = 1; // 0 = Sunlit Crest/Back, 1 = Inner Barrel Face, 2 = Crashing Foam
+
+                    if (v <= 0.42) {
+                        // Trough apron (-1.2 to -0.35) transitioning into the concave overturning barrel (-0.35 to 0.42)
+                        const t = (v + 1.2) / 1.62; // 0.0 at bottom foreground, 1.0 at curling lip tip
+                        // Angle sweeps from flat horizontal (0) up vertical (PI/2) and curls forward past PI
+                        const theta = Math.pow(t, 1.45) * Math.PI * (0.88 + 0.24 * localCurl);
+
+                        // Horizontal lateral sweep as water gets sucked up into the barrel sideways
+                        const lateralDraw = Math.sin(t * Math.PI) * 18.0 * (0.6 + 0.4 * localCurl);
+                        localX += lateralDraw + streakRipple * 0.6;
+
+                        // Vertical profile: rises up to crest, then pitches downward at the lip tip (t > 0.82)
+                        const rise = Math.sin(theta * 0.72) * H_wave;
+                        const lipDrop = Math.max(0, t - 0.76) * H_wave * 0.85 * localCurl * (0.6 + 0.6 * shoal);
+                        const troughSlope = (1 - t) * H_wave * 0.48;
+                        localY = (troughSlope - rise + lipDrop) + ridgeWarp * 0.45;
+
+                        // Z-Depth: The overhanging lip (t ~ 0.75..1.0) pitches closest to the camera!
+                        depthZ = (1 - t) * 35 + Math.sin(Math.max(0, t - 0.35) * 2.1) * 55 * localCurl;
+
+                        // Brush pressure: thin in deep dark trough, bold along the translucent backlit crest & lip
+                        pressure = 0.16 + 0.78 * Math.pow(Math.sin(t * Math.PI * 0.88), 1.3);
+                        band = (t > 0.64 && t < 0.92) ? 0 : 1;
+                    } else {
+                        // Back-slope of the wave & distant horizon ocean swells (v > 0.42)
+                        const b = (v - 0.42) / 0.93; // 0 at top of crest, 1 at far horizon
+                        const crestPeakY = -H_wave * 0.82 + ridgeWarp * 0.45;
+                        const swellTrain = Math.sin(b * Math.PI * 5.5 + u * 2.2 + perlin.noise(u * 3, b * 4) * 2.5) * (6.5 * (1 - b * 0.65) * chop);
+
+                        localX += (1 - b) * 11.0 * localCurl;
+                        localY = crestPeakY - b * H_wave * 0.52 + swellTrain;
+                        // Back slope recedes rapidly in Z so the front barrel crest occludes it cleanly!
+                        depthZ = 42 - b * 110;
+                        pressure = Math.max(0.10, (1 - b * 0.78) * (0.65 + 0.35 * Math.cos(b * Math.PI * 5.5)));
+                        band = 0;
+                    }
+
+                    // Rotate by diagonal wave perspective angle and center on page
+                    const screenX = cx + localX * cosSk - localY * sinSk;
+                    const screenY = cy + H_wave * 0.18 + localX * sinSk + localY * cosSk;
+                    return { x: screenX, y: screenY, z: depthZ, pressure: Math.max(0.06, Math.min(1.0, pressure)), band };
+                };
+
+                // PASS 1: TUMBLING WHITEWATER FOAM LIP (Drawn first at highest Z where wave breaks on right)
+                if (foamDensity > 0 && breakProg > 0.05) {
+                    const uBreakStart = 0.85 - breakProg * 1.45; // Where the lip begins crumbling into foam
+                    for (let f = 0; f < foamDensity; f++) {
+                        const fFrac = f / Math.max(1, foamDensity - 1);
+                        const uCenter = uBreakStart + fFrac * (1.05 - uBreakStart) + rng.range(-0.04, 0.04);
+                        if (uCenter < -0.95 || uCenter > 1.05) continue;
+
+                        const intensity = Math.max(0.15, (uCenter - uBreakStart) / Math.max(0.2, 1.05 - uBreakStart));
+                        const lipAnchor = evalWaveSurface(uCenter, rng.range(0.24, 0.42));
+
+                        // Create billowing turbulent foam cascades tumbling down the front of the lip
+                        const cascadeSteps = Math.round(18 + intensity * 28);
+                        const foamPath = [];
+                        let fx = lipAnchor.x;
+                        let fy = lipAnchor.y;
+                        const cascadeAngle = skewRad + Math.PI * 0.42 + rng.range(-0.35, 0.35);
+
+                        for (let s = 0; s <= cascadeSteps; s++) {
+                            const st = s / cascadeSteps;
+                            const billow = perlin.fbm(fx * 0.08 + f * 1.3, fy * 0.08 + st * 2.5, 2) * (10.5 * intensity);
+                            const swirlX = Math.cos(cascadeAngle + st * 1.8) * 1.35 + Math.cos(st * Math.PI * 5 + f) * 0.9;
+                            const swirlY = Math.sin(cascadeAngle + st * 0.9) * 1.55 + Math.sin(st * Math.PI * 5 + f) * 0.9;
+
+                            fx += swirlX + billow * 0.12;
+                            fy += swirlY + Math.abs(billow) * 0.14;
+                            const fz = lipAnchor.z + 18 + (1 - st) * 12;
+
+                            if (checkAndWriteOcclusion(fx, fy, fz, 1, false)) {
+                                const fPress = Math.max(0.15, Math.min(1.0, (0.35 + 0.65 * Math.sin(st * Math.PI)) * (0.5 + 0.5 * intensity)));
+                                foamPath.push({ x: fx, y: fy, intrinsicPressure: fPress, band: 2 });
+                            } else {
+                                if (foamPath.length > 2) rawPolylines.push(foamPath.slice());
+                                foamPath.length = 0;
+                            }
+                        }
+                        if (foamPath.length > 2) rawPolylines.push(foamPath);
+                    }
+                }
+
+                // PASS 2: STREAKY UP-FACE WATER FLOW RIBBONS (Sweeping from trough up into curling lip)
+                if (renderStyle === 'combined' || renderStyle === 'ribbons_only') {
+                    const vSteps = 110;
+                    for (let r = 0; r < ribbonCount; r++) {
+                        const uBase = ((r / Math.max(1, ribbonCount - 1)) * 2.1 - 1.05) + rng.range(-0.008, 0.008);
+                        let currentRibbon = [];
+
+                        // Trace from the curling lip (v = 0.42) down into the foreground trough (v = -1.15)
+                        // so the overhanging upper lip writes its Z-buffer first and hides the inner pocket!
+                        for (let s = vSteps; s >= 0; s--) {
+                            const v = -1.15 + (s / vSteps) * 1.57; // -1.15 to +0.42
+                            const uWiggle = perlin.noise(uBase * 6.0, v * 3.5 + r * 0.1) * 0.025 * chop;
+                            const pt = evalWaveSurface(uBase + uWiggle, v);
+
+                            if (checkAndWriteOcclusion(pt.x, pt.y, pt.z, 0, false)) {
+                                currentRibbon.push({ x: pt.x, y: pt.y, intrinsicPressure: pt.pressure, band: pt.band });
+                            } else {
+                                if (currentRibbon.length > 2) rawPolylines.push(currentRibbon.reverse());
+                                currentRibbon = [];
+                            }
+                        }
+                        if (currentRibbon.length > 2) rawPolylines.push(currentRibbon.reverse());
+                    }
+                }
+
+                // PASS 3: LONGITUDINAL SWELL & BARREL CONTOURS (Crest lines & background ocean swells)
+                if (renderStyle === 'combined' || renderStyle === 'contours_only') {
+                    const uSteps = 160;
+                    // Sort v-contours so the front crest (v ~ 0.38) draws before the receding back-slope (v > 0.45)
+                    const vValues = [];
+                    for (let i = 0; i < swellLines; i++) {
+                        const frac = i / Math.max(1, swellLines - 1);
+                        if (renderStyle === 'combined') {
+                            // In combined mode, concentrate longitudinal lines on the upper crest & back ocean swells
+                            vValues.push(0.18 + frac * 1.15);
+                        } else {
+                            vValues.push(-1.10 + frac * 2.40);
+                        }
+                    }
+
+                    for (const vBase of vValues) {
+                        let currentContour = [];
+                        for (let s = 0; s <= uSteps; s++) {
+                            const u = -1.05 + (s / uSteps) * 2.10;
+                            const vMod = vBase + perlin.noise(u * 4.5, vBase * 5.0) * 0.03 * chop;
+                            const pt = evalWaveSurface(u, vMod);
+
+                            if (checkAndWriteOcclusion(pt.x, pt.y, pt.z, 0, vBase > 0.48)) {
+                                currentContour.push({ x: pt.x, y: pt.y, intrinsicPressure: pt.pressure, band: pt.band });
+                            } else {
+                                if (currentContour.length > 2) rawPolylines.push(currentContour);
+                                currentContour = [];
+                            }
+                        }
+                        if (currentContour.length > 2) rawPolylines.push(currentContour);
                     }
                 }
             }
@@ -3669,7 +3888,7 @@ void loop() {
                 const layer = getActiveLayer();
                 layer.algo = e.target.value; layer.hierarchyBand = -1; layer.params = {};
                 ALGO_SCHEMAS[layer.algo].forEach(s => { layer.params[s.key] = s.default; });
-                if (['space_colonization', 'curl_streamlines', 'diff_growth', 'botanical_rosette', 'aerial_canopy'].includes(layer.algo)) layer.brush.mode = 'intrinsic';
+                if (['space_colonization', 'curl_streamlines', 'diff_growth', 'botanical_rosette', 'aerial_canopy', 'curling_wave'].includes(layer.algo)) layer.brush.mode = 'intrinsic';
                 generateLayerGeometry(layer); renderActiveInspector(); renderLayerStack(); renderViewport(); updateTelemetryBar();
             });
 

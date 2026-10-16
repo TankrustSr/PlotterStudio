@@ -115,9 +115,10 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-2 gap-1.5">
-                    <button data-preset="botanical-leaf" class="preset-btn text-left px-2.5 py-1.5 rounded bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 text-xs flex items-center space-x-2 transition">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span><span class="truncate">1. Venation Leaf</span>
-                    </button>
+                    <!-- Around line 74: Update Preset 1 button text -->
+					<button data-preset="botanical-leaf" class="preset-btn text-left px-2.5 py-1.5 rounded bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 text-xs flex items-center space-x-2 transition">
+						<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span class="truncate">1. Arbor Flow Network</span>
+					</button>
                     <button data-preset="water-eddies" class="preset-btn text-left px-2.5 py-1.5 rounded bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 text-xs flex items-center space-x-2 transition">
                         <span class="w-2 h-2 rounded-full bg-sky-400"></span><span class="truncate">2. Curl Water Eddies</span>
                     </button>
@@ -274,10 +275,11 @@
                         <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Generative Algorithm (9 Engines)</label>
                         <select id="layerAlgoSelect" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500">
                             <optgroup label="Organic & Biological (Intrinsic Brush Pressure)">
-                                <option value="space_colonization">1. Space Colonization (Trees & Leaf Veins)</option>
+                                <option value="space_colonization">1. Organic Flow-Branching Network (Arbor & Delta Streams)</option>
                                 <option value="curl_streamlines">2. Curl Noise Water Streamlines (Fluid & Eddies)</option>
                                 <option value="diff_growth">3. Differential Growth (Cellular Flora & Agate)</option>
                                 <option value="botanical_rosette">4. Phyllotaxis Botanical Rosettes (Succulents & Leaves)</option>
+                                <option value="aerial_canopy">11. Aerial Drone Forest Canopy & River Valley</option>
                             </optgroup>
                             <optgroup label="Algorithmic & Geometric Classics">
                                 <option value="flowfield">5. Perlin / Simplex Flow Field</option>
@@ -858,21 +860,24 @@
 
         const ALGO_SCHEMAS = {
             space_colonization: [
-                { key: 'envelope', label: 'Botanical Envelope Shape', type: 'select', default: 'cordate_leaf', options: [
-                    { value: 'cordate_leaf', label: 'Botanical Cordate Leaf' },
-                    { value: 'oak_canopy', label: 'Oak / Lobed Canopy Tree' },
-                    { value: 'ginkgo_fan', label: 'Ginkgo Biloba Fan Leaf' },
-                    { value: 'root_network', label: 'Radial Root / Mycelium Network' }
-                ]},
-                { key: 'attractorCount', label: 'Auxin Attractor Count', min: 150, max: 1200, step: 25, default: 550 },
-                { key: 'attractionDist', label: 'Attraction Radius (mm)', min: 15, max: 90, step: 1, default: 42 },
-                { key: 'killDist', label: 'Kill Distance (mm)', min: 2.0, max: 16.0, step: 0.5, default: 5.5 },
-                { key: 'stepSize', label: 'Branch Growth Step (mm)', min: 1.2, max: 6.0, step: 0.2, default: 2.6 },
-                { key: 'windBias', label: 'Twist / Wind Swirl Bias', min: -1.0, max: 1.0, step: 0.05, default: 0.10 },
-                { key: 'includeOutline', label: 'Leaf / Canopy Margin Outline', type: 'select', default: 1, options: [
-                    { value: 1, label: 'Include Margin Outline' }, { value: 0, label: 'Veins / Branches Only' }
-                ]}
+                {
+                    key: 'originMode', label: 'Primary Flow Architecture', type: 'select', default: 'upward_arbor',
+                    options: [
+                        { value: 'upward_arbor', label: 'Windswept Arbor (Bottom-Up Canopy)' },
+                        { value: 'braided_delta', label: 'Braided River Delta (Horizontal Sweep)' },
+                        { value: 'radial_mycelium', label: 'Radial Vascular Burst (Center-Out)' },
+                        { value: 'converging_roots', label: 'Dual-Edge Converging Streams' }
+                    ]
+                },
+                { key: 'trunkCount', label: 'Primary Trunk / Stream Count', min: 3, max: 45, step: 1, default: 14 },
+                { key: 'maxGenerations', label: 'Max Branching Generations', min: 1, max: 6, step: 1, default: 4 },
+                { key: 'splitInterval', label: 'Branching Distance Interval (mm)', min: 6, max: 45, step: 1, default: 16 },
+                { key: 'splitAngle', label: 'Bifurcation Fork Angle (°)', min: 8, max: 55, step: 1, default: 22 },
+                { key: 'flowScale', label: 'Perlin Flow Field Scale', min: 0.002, max: 0.030, step: 0.001, default: 0.008 },
+                { key: 'flowStrength', label: 'Flow Field Swirl / Turbulence', min: 0.1, max: 3.5, step: 0.1, default: 1.3 },
+                { key: 'minClearance', label: 'Streamline Avoidance Spacing (mm)', min: 0.4, max: 4.5, step: 0.1, default: 1.3 }
             ],
+			
             curl_streamlines: [
                 { key: 'minSeparationMm', label: 'Streamline Separation (mm)', min: 1.2, max: 8.0, step: 0.2, default: 2.4 },
                 { key: 'curlFreq', label: 'Fluid Curl Frequency', min: 0.003, max: 0.035, step: 0.001, default: 0.011 },
@@ -984,6 +989,33 @@
                         { value: 1, label: 'Invert (Plot White/Metallic Ink on Dark Paper)' }
                     ]
                 }
+            ],
+			
+            aerial_canopy: [
+                {
+                    key: 'forestStyle', label: 'Canopy & Biome Morphology', type: 'select', default: 'mixed_boreal',
+                    options: [
+                        { value: 'mixed_boreal', label: 'Mixed Boreal (Ruffled Deciduous + Starry Conifers)' },
+                        { value: 'old_growth', label: 'Billowing Old-Growth Deciduous Crowns' },
+                        { value: 'alpine_spruce', label: 'Alpine Conifer / Spruce Needle Rosettes' },
+                        { value: 'contour_topography', label: 'Pure Topographic Canopy Isolines' }
+                    ]
+                },
+                { key: 'treeCount', label: 'Canopy Crown Density', min: 35, max: 360, step: 5, default: 165 },
+                { key: 'minCrownMm', label: 'Min Understory Crown Radius (mm)', min: 2.0, max: 10.0, step: 0.5, default: 4.0 },
+                { key: 'maxCrownMm', label: 'Max Emergent Crown Radius (mm)', min: 8.0, max: 32.0, step: 0.5, default: 15.5 },
+                { key: 'foliageRings', label: 'Foliage Detail Rings / Crown', min: 2, max: 9, step: 1, default: 5 },
+                { key: 'riverWidthMm', label: 'River Channel Width (mm, 0=None)', min: 0, max: 55, step: 1, default: 18 },
+                { key: 'riverMeander', label: 'River Meander / Sinuosity', min: 0.1, max: 2.5, step: 0.1, default: 1.15 },
+                { key: 'riverStreams', label: 'Water Flow Streamlines', min: 0, max: 28, step: 1, default: 11 },
+                {
+                    key: 'tributary', label: 'Side Stream Tributary', type: 'select', default: 1,
+                    options: [
+                        { value: 1, label: 'Include Joining Creek / Tributary' },
+                        { value: 0, label: 'Single Main River Channel Only' }
+                    ]
+                },
+                { key: 'mistClearings', label: 'Fog / Mist Canopy Clearings', min: 0.0, max: 0.85, step: 0.05, default: 0.30 }
             ]
         };
 
@@ -1088,67 +1120,6 @@
             return result;
         }
 
-        function isPointInBotanicalEnvelope(nx, ny, envelopeType) {
-            if (envelopeType === 'cordate_leaf') {
-                const yShift = -ny;
-                if (yShift < -0.85 || yShift > 0.95) return false;
-                const t = (yShift + 0.85) / 1.8;
-                const widthEnv = Math.sin(Math.pow(t, 0.72) * Math.PI) * (0.88 - 0.15 * t);
-                const basalNotch = (t < 0.15) ? (0.15 - t) * 0.9 : 0;
-                return Math.abs(nx) <= Math.max(0.02, widthEnv - basalNotch);
-            } else if (envelopeType === 'oak_canopy') {
-                const r = Math.hypot(nx, ny + 0.12);
-                const ang = Math.atan2(ny + 0.12, nx);
-                const lobe = 0.72 + 0.16 * Math.cos(ang * 5) + 0.08 * Math.sin(ang * 9);
-                return r <= lobe && ny <= 0.78;
-            } else if (envelopeType === 'ginkgo_fan') {
-                const dx = nx, dy = 0.75 - ny;
-                if (dy <= 0.05) return false;
-                const rad = Math.hypot(dx, dy), ang = Math.atan2(dx, dy);
-                if (Math.abs(ang) > 1.08) return false;
-                const maxR = 1.38 - 0.28 * Math.exp(-Math.pow(ang * 4.5, 2)) + 0.05 * Math.cos(ang * 14);
-                return rad <= maxR;
-            } else {
-                const r = Math.hypot(nx, ny), ang = Math.atan2(ny, nx);
-                return r <= (0.88 + 0.1 * Math.sin(ang * 7));
-            }
-        }
-
-        function generateEnvelopeOutlinePaths(envelopeType, cx, cy, scaleX, scaleY) {
-            const paths = [];
-            if (envelopeType === 'root_network') return paths;
-            if (envelopeType === 'cordate_leaf') {
-                const leftSide = [], rightSide = [], steps = 200;
-                for (let i = 0; i <= steps; i++) {
-                    const t = i / steps, yShift = -0.80 + t * 1.72, ny = -yShift;
-                    const widthEnv = Math.sin(Math.pow(t, 0.72) * Math.PI) * (0.88 - 0.15 * t);
-                    const serration = 0.018 * Math.sin(t * 48) * Math.sin(t * Math.PI);
-                    const w = Math.max(0, widthEnv + serration), p = 0.25 + 0.45 * (1 - t);
-                    leftSide.push({ x: cx - w * scaleX, y: cy + ny * scaleY, intrinsicPressure: p, band: 2 });
-                    rightSide.push({ x: cx + w * scaleX, y: cy + ny * scaleY, intrinsicPressure: p, band: 2 });
-                }
-                paths.push(leftSide, rightSide);
-            } else if (envelopeType === 'ginkgo_fan') {
-                const fan = [], steps = 220, baseX = cx, baseY = cy + 0.75 * scaleY;
-                fan.push({ x: baseX, y: baseY, intrinsicPressure: 0.75, band: 2 });
-                for (let i = 0; i <= steps; i++) {
-                    const u = (i / steps) * 2 - 1, ang = u * 1.06;
-                    const maxR = 1.38 - 0.28 * Math.exp(-Math.pow(ang * 4.5, 2)) + 0.035 * Math.cos(ang * 22);
-                    fan.push({ x: cx + Math.sin(ang) * maxR * scaleX, y: cy + (0.75 - Math.cos(ang) * maxR) * scaleY, intrinsicPressure: 0.25 + 0.3 * (1 - Math.abs(u)), band: 2 });
-                }
-                fan.push({ x: baseX, y: baseY, intrinsicPressure: 0.75, band: 2 });
-                paths.push(fan);
-            } else if (envelopeType === 'oak_canopy') {
-                const crown = [], steps = 220;
-                for (let i = 0; i <= steps; i++) {
-                    const a = (i / steps) * Math.PI * 2;
-                    const lobe = 0.72 + 0.16 * Math.cos(a * 5) + 0.08 * Math.sin(a * 9);
-                    crown.push({ x: cx + Math.cos(a) * lobe * scaleX, y: cy + (Math.sin(a) * lobe - 0.12) * scaleY, intrinsicPressure: 0.25 + 0.2 * Math.sin(a * 5), band: 2 });
-                }
-                paths.push(crown);
-            }
-            return paths;
-        }
 		/**************************************************************************
          * GRAYSCALE IMAGE BUFFER & BILINEAR LUMINANCE / GRADIENT SAMPLER
          **************************************************************************/
@@ -1283,7 +1254,7 @@
         };
         grayscaleSampler.initDefaultRelief();
 		
-        function generateLayerGeometry(layer) {
+	   function generateLayerGeometry(layer) {
             const W = state.paperWidth, H = state.paperHeight, M = state.paperMargin;
             const innerW = Math.max(10, W - 2 * M), innerH = Math.max(10, H - 2 * M);
             const cx = W / 2, cy = H / 2;
@@ -1292,92 +1263,151 @@
             const p = layer.params;
             let rawPolylines = [];
 
-            if (layer.algo === 'space_colonization') {
-                const envType = p.envelope || 'cordate_leaf';
-                const numAttractors = Math.round(p.attractorCount || 550);
-                const attractDist = p.attractionDist || 42;
-                const killDist = p.killDist || 5.5;
-                const stepSize = Math.max(1.0, (p.stepSize || 2.6) * 0.75);
-                const windBias = p.windBias || 0;
-                const scaleX = innerW * 0.46, scaleY = innerH * 0.44;
-                const attractors = [];
-                let attempts = 0;
-                while (attractors.length < numAttractors && attempts < numAttractors * 10) {
-                    attempts++;
-                    const nx = rng.range(-1, 1), ny = rng.range(-1, 1);
-                    if (isPointInBotanicalEnvelope(nx, ny, envType)) {
-                        attractors.push({ x: cx + nx * scaleX, y: cy + ny * scaleY, active: true });
-                    }
-                }
-                const nodes = [];
-                if (envType === 'root_network') {
-                    nodes.push({ x: cx, y: cy, parent: -1, children: [], weight: 1 });
-                } else {
-                    const startY = cy + (envType === 'ginkgo_fan' ? 0.75 : 0.80) * scaleY;
-                    const petioleBottomY = Math.min(H - M, startY + 12);
-                    nodes.push({ x: cx, y: petioleBottomY, parent: -1, children: [], weight: 1 });
-                    nodes.push({ x: cx, y: startY, parent: 0, children: [], weight: 1 });
-                    nodes[0].children.push(1);
-                }
-                for (let iter = 0; iter < 260; iter++) {
-                    const influences = new Map();
-                    for (let aIdx = 0; aIdx < attractors.length; aIdx++) {
-                        const att = attractors[aIdx];
-                        if (!att.active) continue;
-                        let bestNode = -1, bestDistSq = attractDist * attractDist;
-                        for (let nIdx = 0; nIdx < nodes.length; nIdx++) {
-                            const nd = nodes[nIdx];
-                            const dSq = (att.x - nd.x) ** 2 + (att.y - nd.y) ** 2;
-                            if (dSq < killDist * killDist) { att.active = false; bestNode = -1; break; }
-                            if (dSq < bestDistSq) { bestDistSq = dSq; bestNode = nIdx; }
-                        }
-                        if (bestNode !== -1 && att.active) {
-                            if (!influences.has(bestNode)) influences.set(bestNode, { vx: 0, vy: 0, count: 0 });
-                            const nd = nodes[bestNode], dx = att.x - nd.x, dy = att.y - nd.y, len = Math.hypot(dx, dy) || 1;
-                            const inf = influences.get(bestNode);
-                            inf.vx += dx / len; inf.vy += dy / len; inf.count++;
+        if (layer.algo === 'space_colonization') {
+                const originMode = p.originMode || 'upward_arbor';
+                const trunkCount = Math.round(p.trunkCount || 14);
+                const maxGen = Math.round(p.maxGenerations || 4);
+                const splitIntervalMm = Math.max(5, p.splitInterval || 16);
+                const splitAngleRad = ((p.splitAngle || 22) * Math.PI) / 180;
+                const flowScale = p.flowScale || 0.008;
+                const flowStrength = p.flowStrength !== undefined ? p.flowStrength : 1.3;
+                const minClearance = Math.max(0.35, p.minClearance || 1.3);
+                const stepMm = 0.85; // Fine integration step for smooth curves
+
+                // Spatial avoidance grid so branches weave around each other instead of tangling
+                const cellSize = Math.max(0.8, minClearance);
+                const gCols = Math.ceil(W / cellSize) + 2;
+                const gRows = Math.ceil(H / cellSize) + 2;
+                const occGrid = Array.from({ length: gCols * gRows }, () => []);
+
+                const canGrowAt = (x, y, branchId, parentId) => {
+                    if (x < M || x > W - M || y < M || y > H - M) return false;
+                    const gx = Math.floor(x / cellSize), gy = Math.floor(y / cellSize);
+                    const minSq = minClearance * minClearance;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nx = gx + dx, ny = gy + dy;
+                            if (nx >= 0 && nx < gCols && ny >= 0 && ny < gRows) {
+                                const cell = occGrid[ny * gCols + nx];
+                                for (let i = 0; i < cell.length; i++) {
+                                    const pt = cell[i];
+                                    if (pt.id === branchId || pt.id === parentId) continue;
+                                    if ((pt.x - x) ** 2 + (pt.y - y) ** 2 < minSq) return false;
+                                }
+                            }
                         }
                     }
-                    if (influences.size === 0) break;
-                    let addedCount = 0;
-                    influences.forEach((inf, nIdx) => {
-                        const parentNode = nodes[nIdx];
-                        const dx = inf.vx / inf.count, dy = inf.vy / inf.count;
-                        const nAngle = perlin.noise(parentNode.x * 0.025, parentNode.y * 0.025) * 0.35 + windBias * 0.22;
-                        const cosA = Math.cos(nAngle), sinA = Math.sin(nAngle);
-                        const rdx = dx * cosA - dy * sinA, rdy = dx * sinA + dy * cosA;
-                        const norm = Math.hypot(rdx, rdy) || 1;
-                        const newIdx = nodes.length;
-                        nodes.push({ x: parentNode.x + (rdx / norm) * stepSize, y: parentNode.y + (rdy / norm) * stepSize, parent: nIdx, children: [], weight: 1 });
-                        parentNode.children.push(newIdx);
-                        addedCount++;
+                    return true;
+                };
+
+                const registerBranchPt = (x, y, id) => {
+                    const gx = Math.floor(x / cellSize), gy = Math.floor(y / cellSize);
+                    if (gx >= 0 && gx < gCols && gy >= 0 && gy < gRows) {
+                        occGrid[gy * gCols + gx].push({ x, y, id });
+                    }
+                };
+
+                // Seed initial primary trunks based on selected architecture
+                const queue = [];
+                let nextBranchId = 1;
+
+                for (let i = 0; i < trunkCount; i++) {
+                    const frac = (i + 0.5) / trunkCount;
+                    let sx = cx, sy = cy, baseHeading = -Math.PI / 2;
+
+                    if (originMode === 'upward_arbor') {
+                        // Clustered along the bottom third, sweeping upward and outward
+                        const spread = (frac - 0.5) * innerW * 0.65;
+                        sx = cx + spread + rng.range(-4, 4);
+                        sy = H - M - rng.range(1, 10);
+                        baseHeading = -Math.PI / 2 + (frac - 0.5) * 0.55;
+                    } else if (originMode === 'braided_delta') {
+                        // Sweeping from left margin to right margin
+                        sx = M + rng.range(1, 8);
+                        sy = M + innerH * (0.12 + 0.76 * frac) + rng.range(-3, 3);
+                        baseHeading = (frac - 0.5) * 0.35;
+                    } else if (originMode === 'radial_mycelium') {
+                        const ang = frac * Math.PI * 2 + rng.range(-0.08, 0.08);
+                        const startR = Math.min(innerW, innerH) * 0.04;
+                        sx = cx + Math.cos(ang) * startR;
+                        sy = cy + Math.sin(ang) * startR;
+                        baseHeading = ang;
+                    } else {
+                        // Dual-edge converging streams
+                        const leftSide = (i % 2 === 0);
+                        sx = leftSide ? (M + 2) : (W - M - 2);
+                        sy = M + innerH * (0.1 + 0.8 * frac);
+                        baseHeading = leftSide ? 0 : Math.PI;
+                    }
+
+                    queue.push({
+                        id: nextBranchId++,
+                        parentId: 0,
+                        x: sx,
+                        y: sy,
+                        heading: baseHeading,
+                        gen: 0,
+                        startPressure: 1.0,
+                        maxSteps: Math.round((Math.max(innerW, innerH) * 0.95) / stepMm)
                     });
-                    if (addedCount === 0 || nodes.length > 3400) break;
                 }
-                for (let i = nodes.length - 1; i >= 0; i--) {
-                    let w = 1;
-                    for (const cIdx of nodes[i].children) w += nodes[cIdx].weight;
-                    nodes[i].weight = w;
-                }
-                const maxWeight = Math.max(2, nodes[0].weight);
-                for (let i = 0; i < nodes.length; i++) {
-                    nodes[i].intrinsicPressure = Math.max(0.05, Math.min(1.0, Math.pow(nodes[i].weight / maxWeight, 0.36)));
-                }
-                function traceSubBranch(parentIdx, childIdx) {
-                    const branch = [{ x: nodes[parentIdx].x, y: nodes[parentIdx].y, intrinsicPressure: nodes[childIdx].intrinsicPressure, band: nodes[childIdx].intrinsicPressure > 0.55 ? 0 : (nodes[childIdx].intrinsicPressure > 0.24 ? 1 : 2) }];
-                    let curr = childIdx;
-                    while (curr !== undefined) {
-                        branch.push({ x: nodes[curr].x, y: nodes[curr].y, intrinsicPressure: nodes[curr].intrinsicPressure, band: nodes[curr].intrinsicPressure > 0.55 ? 0 : (nodes[curr].intrinsicPressure > 0.24 ? 1 : 2) });
-                        if (nodes[curr].children.length === 0) break;
-                        const sorted = nodes[curr].children.slice().sort((a, b) => nodes[b].weight - nodes[a].weight);
-                        for (let k = 1; k < sorted.length; k++) traceSubBranch(curr, sorted[k]);
-                        curr = sorted[0];
+
+                // Process active streams in generation order so main trunks claim space first
+                while (queue.length > 0) {
+                    const b = queue.shift();
+                    const pts = [];
+                    let x = b.x, y = b.y, heading = b.heading;
+                    let distSinceSplit = rng.range(0, splitIntervalMm * 0.4);
+                    const genFactor = 1.0 - (b.gen / Math.max(1, maxGen + 1));
+                    const band = b.gen === 0 ? 0 : (b.gen <= 2 ? 1 : 2);
+
+                    for (let s = 0; s < b.maxSteps; s++) {
+                        const lifeProgress = s / b.maxSteps;
+                        const pressure = Math.max(0.06, b.startPressure * Math.pow(1.0 - lifeProgress * 0.78, 0.85));
+
+                        if (s > 3 && !canGrowAt(x, y, b.id, b.parentId)) break;
+
+                        pts.push({ x, y, intrinsicPressure: pressure, band });
+                        registerBranchPt(x, y, b.id);
+
+                        // Sample multi-octave Simplex/Perlin curl steering
+                        const nVal = perlin.fbm((x - cx) * flowScale, (y - cy) * flowScale, 3);
+                        const nDetail = perlin.noise(x * flowScale * 2.7 + 40, y * flowScale * 2.7) * 0.35;
+                        const flowAngleOffset = (nVal + nDetail) * flowStrength * 1.6;
+
+                        // Smoothly steer branch heading toward the local flow field
+                        const targetAngle = b.heading + flowAngleOffset;
+                        heading = heading + (targetAngle - heading) * 0.14;
+
+                        x += Math.cos(heading) * stepMm;
+                        y += Math.sin(heading) * stepMm;
+                        distSinceSplit += stepMm;
+
+                        // Bifurcate into child streams when interval is reached
+                        if (b.gen < maxGen && distSinceSplit >= splitIntervalMm && lifeProgress < 0.82) {
+                            distSinceSplit = -rng.range(0, splitIntervalMm * 0.3);
+                            const branchSign = (rng.next() > 0.5 ? 1 : -1);
+                            const forkAngle = splitAngleRad * (0.75 + 0.5 * rng.next()) * (1 + b.gen * 0.12);
+
+                            // Main stem nudges slightly opposite to the new offshoot for natural Y-forking
+                            heading -= branchSign * forkAngle * 0.22;
+
+                            queue.push({
+                                id: nextBranchId++,
+                                parentId: b.id,
+                                x: pts[pts.length - 1].x,
+                                y: pts[pts.length - 1].y,
+                                heading: heading + branchSign * forkAngle,
+                                gen: b.gen + 1,
+                                startPressure: pressure * 0.78,
+                                maxSteps: Math.round((b.maxSteps - s) * rng.range(0.62, 0.88))
+                            });
+                        }
                     }
-                    if (branch.length > 1) rawPolylines.push(branch);
-                }
-                traceSubBranch(0, 0);
-                if (Number(p.includeOutline) === 1) {
-                    rawPolylines.push(...generateEnvelopeOutlinePaths(envType, cx, cy, scaleX, scaleY));
+
+                    if (pts.length >= 4) {
+                        rawPolylines.push(pts);
+                    }
                 }
             }
             else if (layer.algo === 'curl_streamlines') {
@@ -1984,6 +2014,255 @@
                         }
                         const stitchedContours = stitchTouchingPaths(levelSegs, stepMm * 0.45);
                         rawPolylines.push(...stitchedContours);
+                    }
+                }
+            }
+			// --- ALGORITHM 11: AERIAL DRONE FOREST CANOPY & RIVER VALLEY ---
+           // --- ALGORITHM 11: AERIAL DRONE FOREST CANOPY & RIVER VALLEY ---
+            else if (layer.algo === 'aerial_canopy') {
+                const forestStyle = p.forestStyle || 'mixed_boreal';
+                const targetTrees = Math.round(p.treeCount || 165);
+                const minR = Math.max(1.8, p.minCrownMm || 4.0);
+                const maxR = Math.max(minR + 2, p.maxCrownMm || 15.5);
+                const ringsPerCrown = Math.round(p.foliageRings || 5);
+                const riverWidth = p.riverWidthMm !== undefined ? p.riverWidthMm : 18;
+                const meander = p.riverMeander !== undefined ? p.riverMeander : 1.15;
+                const riverStreams = Math.round(p.riverStreams !== undefined ? p.riverStreams : 11);
+                const hasTributary = Number(p.tributary !== undefined ? p.tributary : 1) === 1;
+                const mistCutoff = p.mistClearings !== undefined ? p.mistClearings : 0.30;
+
+                // 1. First, build tree crowns so we can perform true hidden-line elimination on water!
+                const crowns = [];
+                let attempts = 0;
+                const maxAttempts = targetTrees * 30;
+
+                while (crowns.length < targetTrees && attempts < maxAttempts) {
+                    attempts++;
+                    const tx = M + rng.range(0.02, 0.98) * innerW;
+                    const ty = M + rng.range(0.02, 0.98) * innerH;
+
+                    const macroFbm = 0.5 + 0.5 * perlin.fbm((tx - cx) * 0.009, (ty - cy) * 0.009, 3);
+                    if (macroFbm < mistCutoff * 0.72) continue; // Fog clearing / valley opening
+
+                    const sizeBias = Math.pow(rng.next(), 1.35) * (0.4 + 0.6 * macroFbm);
+                    const radius = minR + sizeBias * (maxR - minR);
+
+                    let tooClose = false;
+                    for (let i = 0; i < crowns.length; i++) {
+                        const other = crowns[i];
+                        const minDist = (radius + other.r) * 0.66;
+                        if ((tx - other.x) ** 2 + (ty - other.y) ** 2 < minDist * minDist) { tooClose = true; break; }
+                    }
+                    if (tooClose) continue;
+
+                    let isConifer = false;
+                    if (forestStyle === 'alpine_spruce') isConifer = true;
+                    else if (forestStyle === 'mixed_boreal') {
+                        isConifer = (perlin.noise(tx * 0.022 + 90, ty * 0.022) + rng.range(-0.18, 0.18)) > 0.05;
+                    }
+
+                    crowns.push({
+                        x: tx, y: ty, r: radius, height: radius * (0.85 + 0.3 * macroFbm), isConifer,
+                        lobes: isConifer ? Math.round(rng.range(11, 19)) : Math.round(rng.range(5, 9)),
+                        phase: rng.range(0, Math.PI * 2),
+                        sunExposure: Math.max(0.2, Math.min(1.0, 0.35 + 0.65 * macroFbm)),
+                        band: radius > (minR + (maxR - minR) * 0.48) ? 0 : 2
+                    });
+                }
+                crowns.sort((a, b) => b.height - a.height);
+
+                const isOccludedByAnyCrown = (px, py) => {
+                    for (let k = 0; k < crowns.length; k++) {
+                        const upper = crowns[k];
+                        const dx = px - upper.x, dy = py - upper.y;
+                        const distSq = dx * dx + dy * dy;
+                        if (distSq > (upper.r * 1.18) ** 2) continue;
+                        const ang = Math.atan2(dy, dx);
+                        const lobeMod = upper.isConifer
+                            ? 0.88 + 0.12 * Math.cos(ang * upper.lobes + upper.phase)
+                            : 0.90 + 0.10 * Math.cos(ang * upper.lobes + upper.phase) + 0.06 * perlin.noise(upper.x * 0.1 + Math.cos(ang) * 2, upper.y * 0.1 + Math.sin(ang) * 2);
+                        if (Math.sqrt(distSq) < upper.r * lobeMod * 0.94) return true;
+                    }
+                    return false;
+                };
+
+                // 2. Build Meandering River Spine & Tangent-Smooth Tributary
+                const riverSpine = [];
+                const tribSpine = [];
+                const riverSteps = 180;
+                const rotAngle = rng.range(-0.45, 0.45);
+                const cosR = Math.cos(rotAngle), sinR = Math.sin(rotAngle);
+                const spanL = Math.hypot(innerW, innerH) * 0.62;
+
+                for (let i = 0; i <= riverSteps; i++) {
+                    const u = (i / riverSteps) * 2 - 1;
+                    const along = u * spanL;
+                    const nBend = perlin.fbm(u * 1.45 + 10, 2.5, 3) * innerW * 0.32 * meander;
+                    const sHarmonic = Math.sin(u * Math.PI * 1.35) * innerW * 0.12 * meander;
+                    const cross = nBend + sHarmonic;
+                    const rx = cx + along * sinR + cross * cosR;
+                    const ry = cy + along * cosR - cross * sinR;
+                    const localW = riverWidth * (0.78 + 0.45 * Math.abs(perlin.noise(u * 3.2, 7.1)));
+                    riverSpine.push({ x: rx, y: ry, w: localW, u });
+                }
+
+                if (riverWidth > 0.5 && riverStreams > 0) {
+                    for (let i = 0; i < riverSpine.length; i++) {
+                        const prev = riverSpine[Math.max(0, i - 1)];
+                        const next = riverSpine[Math.min(riverSpine.length - 1, i + 1)];
+                        const dx = next.x - prev.x, dy = next.y - prev.y;
+                        const len = Math.hypot(dx, dy) || 1;
+                        riverSpine[i].nx = -dy / len;
+                        riverSpine[i].ny = dx / len;
+                    }
+
+                    // Emit main river flow lines with hidden-line elimination under canopies
+                    for (let s = 0; s < riverStreams; s++) {
+                        const laneFrac = riverStreams === 1 ? 0 : (s / (riverStreams - 1)) * 2 - 1;
+                        const isBank = (s === 0 || s === riverStreams - 1);
+                        let currentStream = [];
+
+                        for (let i = 0; i < riverSpine.length; i++) {
+                            const rp = riverSpine[i];
+                            const ripple = perlin.noise(i * 0.12 + s * 1.7, s * 2.3) * (rp.w * 0.06);
+                            const offset = laneFrac * (rp.w * 0.48) + ripple;
+                            const px = rp.x + rp.nx * offset;
+                            const py = rp.y + rp.ny * offset;
+
+                            if (px >= M && px <= W - M && py >= M && py <= H - M && !isOccludedByAnyCrown(px, py)) {
+                                const pVal = isBank ? 0.72 : (0.18 + 0.38 * (1 - Math.abs(laneFrac)));
+                                currentStream.push({ x: px, y: py, intrinsicPressure: pVal, band: 1 });
+                            } else {
+                                if (currentStream.length > 1) rawPolylines.push(currentStream);
+                                currentStream = [];
+                            }
+                        }
+                        if (currentStream.length > 1) rawPolylines.push(currentStream);
+                    }
+
+                    // Tangent-Smooth Tributary Merging (Cubic Bézier curve blending into main flow)
+                    if (hasTributary) {
+                        const joinIdx = Math.floor(riverSpine.length * 0.52);
+                        const joinPt = riverSpine[joinIdx];
+                        const nextPt = riverSpine[Math.min(riverSpine.length - 1, joinIdx + 3)];
+                        const mainDirX = nextPt.x - joinPt.x, mainDirY = nextPt.y - joinPt.y;
+                        const mainLen = Math.hypot(mainDirX, mainDirY) || 1;
+                        const tanX = mainDirX / mainLen, tanY = mainDirY / mainLen;
+
+                        // Start tributary off-canvas and curve smoothly tangent to main river direction
+                        const sideSign = rng.next() > 0.5 ? 1 : -1;
+                        const startX = joinPt.x + sideSign * innerW * 0.38 - tanY * innerH * 0.22;
+                        const startY = joinPt.y - sideSign * innerH * 0.38 + tanX * innerW * 0.22;
+                        const ctrlX = joinPt.x - tanX * 28 + sideSign * tanY * 35;
+                        const ctrlY = joinPt.y - tanY * 28 - sideSign * tanX * 35;
+
+                        const tribSteps = 95;
+                        for (let s = 0; s < Math.max(3, Math.round(riverStreams * 0.55)); s++) {
+                            const laneFrac = (s / Math.max(1, Math.round(riverStreams * 0.55) - 1)) * 2 - 1;
+                            let tribSub = [];
+                            for (let i = 0; i <= tribSteps; i++) {
+                                const t = i / tribSteps;
+                                const mt = 1 - t;
+                                // Cubic Bézier formula for tangent-smooth entry
+                                const bx = mt * mt * mt * startX + 3 * mt * mt * t * ctrlX + 3 * mt * t * t * joinPt.x + t * t * t * joinPt.x;
+                                const by = mt * mt * mt * startY + 3 * mt * mt * t * ctrlY + 3 * mt * t * t * joinPt.y + t * t * t * joinPt.y;
+                                const tw = (riverWidth * 0.45) * (1 - 0.4 * t);
+                                const px = bx + (-tanY * laneFrac * tw);
+                                const py = by + (tanX * laneFrac * tw);
+
+                                if (px >= M && px <= W - M && py >= M && py <= H - M && !isOccludedByAnyCrown(px, py)) {
+                                    tribSub.push({ x: px, y: py, intrinsicPressure: 0.25 + 0.35 * (1 - t), band: 1 });
+                                } else {
+                                    if (tribSub.length > 1) rawPolylines.push(tribSub);
+                                    tribSub = [];
+                                }
+                            }
+                            if (tribSub.length > 1) rawPolylines.push(tribSub);
+                        }
+                    }
+                }
+
+                // 3. Render Tree Crowns (with occlusion check against each other)
+                const isOccludedByHigherCrown = (px, py, currentCrownIdx) => {
+                    for (let k = 0; k < currentCrownIdx; k++) {
+                        const upper = crowns[k];
+                        const dx = px - upper.x, dy = py - upper.y;
+                        const distSq = dx * dx + dy * dy;
+                        if (distSq > (upper.r * 1.18) ** 2) continue;
+                        const ang = Math.atan2(dy, dx);
+                        const lobeMod = upper.isConifer
+                            ? 0.88 + 0.12 * Math.cos(ang * upper.lobes + upper.phase)
+                            : 0.90 + 0.10 * Math.cos(ang * upper.lobes + upper.phase) + 0.06 * perlin.noise(upper.x * 0.1 + Math.cos(ang) * 2, upper.y * 0.1 + Math.sin(ang) * 2);
+                        if (Math.sqrt(distSq) < upper.r * lobeMod * 0.94) return true;
+                    }
+                    return false;
+                };
+
+                const sunX = -0.707, sunY = -0.707;
+
+                for (let cIdx = 0; cIdx < crowns.length; cIdx++) {
+                    const c = crowns[cIdx];
+                    if (c.isConifer && forestStyle !== 'contour_topography') {
+                        const boughCount = c.lobes * 2;
+                        for (let b = 0; b < boughCount; b++) {
+                            const ang = (b / boughCount) * Math.PI * 2 + c.phase * 0.3;
+                            const needleLen = c.r * (0.68 + 0.30 * (b % 2 === 0 ? 1 : 0.65));
+                            const startDist = c.r * 0.10;
+                            const boughPts = [];
+                            const nSteps = 8;
+                            const sunDot = Math.cos(ang) * sunX + Math.sin(ang) * sunY;
+                            const press = Math.max(0.10, Math.min(1.0, c.sunExposure * (0.52 + 0.38 * sunDot)));
+
+                            for (let s = 0; s <= nSteps; s++) {
+                                const frac = s / nSteps;
+                                const dist = startDist + frac * (needleLen - startDist);
+                                const swirl = 0.06 * Math.sin(frac * Math.PI) * perlin.noise(c.x * 0.05 + b, c.y * 0.05);
+                                const px = c.x + Math.cos(ang + swirl) * dist;
+                                const py = c.y + Math.sin(ang + swirl) * dist;
+                                if (px >= M && px <= W - M && py >= M && py <= H - M && !isOccludedByHigherCrown(px, py, cIdx)) {
+                                    boughPts.push({ x: px, y: py, intrinsicPressure: press * (1 - frac * 0.45), band: c.band });
+                                } else {
+                                    if (boughPts.length > 1) rawPolylines.push(boughPts.slice());
+                                    boughPts.length = 0;
+                                }
+                            }
+                            if (boughPts.length > 1) rawPolylines.push(boughPts);
+                        }
+                    }
+
+                    const ringTotal = c.isConifer && forestStyle !== 'contour_topography' ? Math.max(2, ringsPerCrown - 1) : ringsPerCrown;
+                    for (let rIdx = 1; rIdx <= ringTotal; rIdx++) {
+                        const ringFrac = rIdx / ringTotal;
+                        const baseRingR = c.r * Math.pow(ringFrac, 0.88);
+                        const steps = Math.max(36, Math.round(baseRingR * 6.5));
+                        let currentSub = [];
+
+                        for (let s = 0; s <= steps; s++) {
+                            const a = (s / steps) * Math.PI * 2;
+                            const cosA = Math.cos(a), sinA = Math.sin(a);
+                            const primaryLobe = Math.cos(a * c.lobes + c.phase + ringFrac * 0.6);
+                            const microRuffle = Math.sin(a * (c.lobes * 2 + 3) - c.phase);
+                            const nWarp = perlin.noise(c.x * 0.08 + cosA * 1.9, c.y * 0.08 + sinA * 1.9);
+
+                            const rMod = c.isConifer
+                                ? baseRingR * (0.84 + 0.16 * Math.pow(0.5 + 0.5 * primaryLobe, 1.6) + 0.06 * microRuffle)
+                                : baseRingR * (0.86 + 0.11 * primaryLobe + 0.05 * microRuffle + 0.12 * nWarp);
+
+                            const px = c.x + cosA * rMod;
+                            const py = c.y + sinA * rMod;
+                            const sunDot = cosA * sunX + sinA * sunY;
+                            const leafGapNoise = perlin.noise(px * 0.18 + rIdx * 3.1, py * 0.18);
+                            const isFoliageGap = (forestStyle !== 'contour_topography') && (rIdx < ringTotal) && (leafGapNoise < -0.24);
+
+                            if (px >= M && px <= W - M && py >= M && py <= H - M && !isFoliageGap && !isOccludedByHigherCrown(px, py, cIdx)) {
+                                const press = Math.max(0.08, Math.min(1.0, c.sunExposure * (0.48 + 0.42 * sunDot) * (0.45 + 0.55 * ringFrac)));
+                                currentSub.push({ x: px, y: py, intrinsicPressure: press, band: c.band });
+                            } else {
+                                if (currentSub.length > 2) rawPolylines.push(currentSub);
+                                currentSub = [];
+                            }
+                        }
+                        if (currentSub.length > 2) rawPolylines.push(currentSub);
                     }
                 }
             }
@@ -3140,9 +3419,21 @@ void loop() {
         function loadArtPreset(presetName) {
             state.layers = []; layerIdCounter = 1;
             if (presetName === 'botanical-leaf') {
-                const l1 = createLayer({ name: 'Primary Leaf Midrib', lbIndex: 3, algo: 'space_colonization', seed: 4219, hierarchyBand: 0, params: { envelope: 'cordate_leaf', attractorCount: 650, attractionDist: 44, killDist: 5.0, stepSize: 2.5, windBias: 0.08, includeOutline: 0 }, brush: { mode: 'intrinsic', minWidth: 0.45, maxWidth: 2.35, gamma: 0.85, freq: 2.0, blendTaper: true, minPower: 35, maxPower: 98 } });
-                const l2 = createLayer({ name: 'Secondary & Margin Veins', lbIndex: 6, algo: 'space_colonization', seed: 4219, hierarchyBand: 1, params: { envelope: 'cordate_leaf', attractorCount: 650, attractionDist: 44, killDist: 5.0, stepSize: 2.5, windBias: 0.08, includeOutline: 0 }, brush: { mode: 'intrinsic', minWidth: 0.22, maxWidth: 1.25, gamma: 1.0, freq: 2.0, blendTaper: true, minPower: 18, maxPower: 72 } });
-                const l3 = createLayer({ name: 'Capillary Twigs & Blade', lbIndex: 4, algo: 'space_colonization', seed: 4219, hierarchyBand: 2, params: { envelope: 'cordate_leaf', attractorCount: 650, attractionDist: 44, killDist: 5.0, stepSize: 2.5, windBias: 0.08, includeOutline: 1 }, brush: { mode: 'intrinsic', minWidth: 0.15, maxWidth: 0.70, gamma: 1.15, freq: 2.0, blendTaper: true, minPower: 12, maxPower: 48 } });
+                const l1 = createLayer({
+                    name: 'Primary Arbor Trunks', lbIndex: 3, algo: 'space_colonization', seed: 4219, hierarchyBand: 0,
+                    params: { originMode: 'upward_arbor', trunkCount: 14, maxGenerations: 4, splitInterval: 16, splitAngle: 22, flowScale: 0.008, flowStrength: 1.3, minClearance: 1.3 },
+                    brush: { mode: 'intrinsic', minWidth: 0.45, maxWidth: 2.35, gamma: 0.85, freq: 2.0, blendTaper: true, minPower: 35, maxPower: 98 }
+                });
+                const l2 = createLayer({
+                    name: 'Secondary Flow Boughs', lbIndex: 6, algo: 'space_colonization', seed: 4219, hierarchyBand: 1,
+                    params: { originMode: 'upward_arbor', trunkCount: 14, maxGenerations: 4, splitInterval: 16, splitAngle: 22, flowScale: 0.008, flowStrength: 1.3, minClearance: 1.3 },
+                    brush: { mode: 'intrinsic', minWidth: 0.22, maxWidth: 1.25, gamma: 1.0, freq: 2.0, blendTaper: true, minPower: 18, maxPower: 72 }
+                });
+                const l3 = createLayer({
+                    name: 'Fine Canopy Tendrils', lbIndex: 4, algo: 'space_colonization', seed: 4219, hierarchyBand: 2,
+                    params: { originMode: 'upward_arbor', trunkCount: 14, maxGenerations: 4, splitInterval: 16, splitAngle: 22, flowScale: 0.008, flowStrength: 1.3, minClearance: 1.3 },
+                    brush: { mode: 'intrinsic', minWidth: 0.15, maxWidth: 0.70, gamma: 1.15, freq: 2.0, blendTaper: true, minPower: 12, maxPower: 48 }
+                });
                 state.layers.push(l3, l2, l1);
             } else if (presetName === 'water-eddies') {
                 const l1 = createLayer({ name: 'Deep Eddy Currents', lbIndex: 1, algo: 'curl_streamlines', seed: 7812, params: { minSeparationMm: 2.4, curlFreq: 0.011, vortexCount: 3, maxSteps: 105, octaves: 3 }, brush: { mode: 'intrinsic', minWidth: 0.18, maxWidth: 1.95, gamma: 0.95, freq: 2.5, blendTaper: true, minPower: 15, maxPower: 95 } });
@@ -3378,7 +3669,7 @@ void loop() {
                 const layer = getActiveLayer();
                 layer.algo = e.target.value; layer.hierarchyBand = -1; layer.params = {};
                 ALGO_SCHEMAS[layer.algo].forEach(s => { layer.params[s.key] = s.default; });
-                if (['space_colonization', 'curl_streamlines', 'diff_growth', 'botanical_rosette'].includes(layer.algo)) layer.brush.mode = 'intrinsic';
+                if (['space_colonization', 'curl_streamlines', 'diff_growth', 'botanical_rosette', 'aerial_canopy'].includes(layer.algo)) layer.brush.mode = 'intrinsic';
                 generateLayerGeometry(layer); renderActiveInspector(); renderLayerStack(); renderViewport(); updateTelemetryBar();
             });
 
